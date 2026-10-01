@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Attendance QR</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 100 100%27%3E%3Ctext y=%27.9em%27 font-size=%2790%27%3E%F0%9F%93%B7%3C/text%3E%3C/svg%3E">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.8/html5-qrcode.min.js"></script>
+<style>
+:root{--bg:#f3f6f4;--card:#fff;--ink:#16302b;--mut:#5d7570;--line:#d5e0dc;--pri:#0f6b5c;--bad:#b3261e;--ok:#1b7a3d}
+@media(prefers-color-scheme:dark){:root{--bg:#10201d;--card:#183029;--ink:#e6f2ee;--mut:#9bb5ae;--line:#2b4a42;--pri:#4cc2ac;--bad:#ff8a80;--ok:#6fd48f}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 "Trebuchet MS",Verdana,sans-serif}
+header{padding:20px 16px 8px;max-width:760px;margin:auto}
+h1{margin:0;font-size:1.6rem}header p{margin:2px 0 0;color:var(--mut)}
+nav{display:flex;gap:6px;max-width:760px;margin:12px auto 0;padding:0 16px}
+nav button{flex:1;padding:10px;border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:8px;font:inherit;cursor:pointer}
+nav button.on{background:var(--pri);color:#fff;border-color:var(--pri)}
+main{max-width:760px;margin:auto;padding:12px 16px 40px}
+section{display:none;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px}
+section.on{display:block}
+label{display:block;margin:10px 0 4px;font-weight:600}
+input,select,textarea{width:100%;padding:10px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink);font:inherit}
+button.act{margin-top:12px;padding:10px 16px;border:0;border-radius:8px;background:var(--pri);color:#fff;font:inherit;cursor:pointer}
+button.alt{background:transparent;color:var(--pri);border:1px solid var(--pri)}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:12px;margin-top:14px}
+.qr{border:1px solid var(--line);border-radius:10px;padding:10px;text-align:center}
+.qr canvas{width:100%;height:auto;border-radius:6px;display:block}
+.qr b{display:block}.qr small{color:var(--mut)}
+#reader{width:100%;max-width:420px;margin:auto}
+.msg{margin-top:10px;padding:10px;border-radius:8px;border:1px solid var(--line)}
+.ok{color:var(--ok)}.bad{color:var(--bad)}
+table{width:100%;border-collapse:collapse;font-size:.9rem}td,th{padding:6px;border-bottom:1px solid var(--line);text-align:left}
+.tbl{overflow-x:auto}
+</style>
+</head>
+<body>
+<header><h1>Attendance QR</h1><p>Unlimited QR codes that never expire. Scan one to text the parent.</p></header>
+<nav>
+<button data-t="gen">Create QR</button>
+<button class="on" data-t="scan">Scan</button>
+<button data-t="set">SMS settings</button>
+<button data-t="log">Log</button>
+</nav>
+<main>
+
+<section id="gen">
+<label>Student name</label><input id="n" placeholder="Juan Dela Cruz">
+<label>Gender</label><select id="g"><option>Male</option><option>Female</option></select>
+<label>Parent / guardian phone</label><input id="p" inputmode="tel" placeholder="09171234567">
+<button class="act" id="mk">Create QR code</button>
+<label style="margin-top:20px">Many students at once (one per line: name, gender, phone)</label>
+<textarea id="bulk" rows="4" placeholder="Maria Santos, Female, 09181234567&#10;Pedro Reyes, Male, 09191234567"></textarea>
+<button class="act alt" id="mkb">Create all</button>
+<div class="grid" id="out"></div>
+</section>
+
+<section id="scan" class="on">
+<p style="margin-top:0">Point the camera at a student's QR code. The parent is texted that the student is absent today.</p>
+<label>Message type</label>
+<select id="mode"><option value="absent">Absent today</option><option value="present">Present today</option></select>
+<button class="act" id="go">Start camera</button>
+<button class="act alt" id="stop">Stop</button>
+<div id="reader"></div>
+<div id="res"></div>
+</section>
+
+<section id="set">
+<label>School name (added to the message)</label><input id="school" placeholder="Iraya Elementary School">
+<label>How to send</label>
+<select id="via">
+<option value="site">Free SMS website: e-FreeSMS or aFreeSMS (copy, paste, send)</option>
+<option value="textbelt">Free SMS website: Textbelt (1 free text per day)</option>
+<option value="app">This phone's own Messages app (free, one tap to send)</option>
+<option value="custom">Custom SMS gateway (URL)</option>
+</select>
+<label>Free SMS website</label><select id="site"><option value="e">e-FreeSMS.com (lists Philippines +63)</option><option value="a">aFreeSms.com</option></select>
+<label>Textbelt key (use "textbelt" for the free tier, or a paid key)</label><input id="key" value="textbelt">
+<label>Custom gateway URL (POST JSON: {number, message})</label><input id="url" placeholder="https://your-gateway.example/send">
+<button class="act" id="save">Save settings</button>
+<div class="msg" id="sv" hidden>Saved.</div>
+<p style="color:var(--mut);font-size:.9rem">Free web services cap how many texts you can send. The "Messages app" option has no cap and uses your own load or plan.</p>
+</section>
+
+<section id="log"><div class="tbl"><table><thead><tr><th>Time</th><th>Student</th><th>Result</th></tr></thead><tbody id="rows"></tbody></table></div>
+<button class="act alt" id="clr">Clear log</button></section>
+</main>
+
+<script>
+const $=id=>document.getElementById(id);
+const store={get(k,d){try{return JSON.parse(localStorage.getItem(k))??d}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
+document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>{
+  document.querySelectorAll('nav button,section').forEach(x=>x.classList.remove('on'));
+  b.classList.add('on');$(b.dataset.t).classList.add('on');if(b.dataset.t==='log')drawLog();});
+
+/* Phone: 09171234567 -> +639171234567 */
+function normPhone(p){p=String(p).replace(/[^\d+]/g,'');if(p.startsWith('+'))return p;if(p.startsWith('09'))return '+63'+p.slice(1);if(p.startsWith('63'))return '+'+p;return p;}
+
+/* QR creation: data lives inside the code itself, so it never expires */
+function addQR(name,gender,phone){
+  name=name.trim();
+  const data=JSON.stringify({n:name,g:gender,p:normPhone(phone)});
+  const tmp=document.createElement('div');
+  new QRCode(tmp,{text:data,width:240,height:240,correctLevel:QRCode.CorrectLevel.M});
+  const src=tmp.querySelector('canvas');
+  const W=300,H=370,cv=document.createElement('canvas');cv.width=W;cv.height=H;
+  const x=cv.getContext('2d');x.fillStyle='#fff';x.fillRect(0,0,W,H);
+  x.fillStyle='#000';x.textAlign='center';
+  let fs=30;x.font='bold '+fs+'px Arial';
+  while(x.measureText(name).width>W-24&&fs>12){fs--;x.font='bold '+fs+'px Arial';}
+  x.fillText(name,W/2,46);
+  x.drawImage(src,30,64,240,240);
+  x.font='18px Arial';x.fillText(gender+' | Attendance QR',W/2,340);
+  const box=document.createElement('div');box.className='qr';box.appendChild(cv);
+  const dl=document.createElement('button');dl.className='act alt';dl.textContent='Download PNG';
+  dl.onclick=()=>{const a=document.createElement('a');a.href=cv.toDataURL('image/png');a.download=name.replace(/\W+/g,'_')+'.png';a.click();};
+  box.appendChild(dl);$('out').prepend(box);
+}
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+$('mk').onclick=()=>{const n=$('n').value,p=$('p').value;if(!n.trim()||!p.trim())return alert('Enter the student name and the parent phone number.');addQR(n,$('g').value,p);$('n').value='';$('p').value='';};
+$('mkb').onclick=()=>{$('bulk').value.split('\n').forEach(l=>{const [n,g,p]=l.split(',').map(s=>s.trim());if(n&&p)addQR(n,/^f/i.test(g)?'Female':'Male',p);});};
+
+/* Settings */
+const cfg=store.get('cfg',{via:'site',key:'textbelt',school:'',url:'',site:'e'});
+['school','via','key','url','site'].forEach(k=>$(k).value=cfg[k]||'');
+$('save').onclick=()=>{['school','via','key','url','site'].forEach(k=>cfg[k]=$(k).value);store.set('cfg',cfg);$('sv').hidden=false;setTimeout(()=>$('sv').hidden=true,1500);};
+
+/* Message */
+function buildMsg(s,mode){
+  const d=new Date().toLocaleDateString('en-PH',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
+  const kid=s.g==='Female'?'daughter':'son';
+  const status=mode==='present'?'PRESENT':'ABSENT';
+  const school=cfg.school?` - ${cfg.school}`:'';
+  return `Good day! This is to inform you that your ${kid}, ${s.n}, is ${status} for today's class on ${d}. This is an automated message. Please do not reply to this message.${school}`;
+}
+
+/* Sending */
+const SITES={e:['e-FreeSMS','https://www.e-freesms.com/sms.php'],a:['aFreeSms','https://afreesms.com/']};
+function copyMsg(){navigator.clipboard.writeText(window.lastMsg).then(()=>alert('Message copied. Paste it into the website.'),()=>prompt('Copy this message:',window.lastMsg));}
+function openSite(){window.open(SITES[cfg.site||'e'][1],'_blank');}
+async function sendSMS(number,message){
+  if(cfg.via==='site')return {ok:true,note:'Ready. Copy the message, open the website, enter the number, and press Send.',site:true};
+  if(cfg.via==='app'){
+    location.href=`sms:${number}?body=${encodeURIComponent(message)}`;
+    return {ok:true,note:'Messages app opened. Tap Send.'};
+  }
+  try{
+    if(cfg.via==='textbelt'){
+      const r=await fetch('https://textbelt.com/text',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},
+        body:new URLSearchParams({phone:number,message,key:cfg.key||'textbelt'})});
+      const j=await r.json();
+      return j.success?{ok:true,note:'Sent'}:{ok:false,note:j.error||'Not sent'};
+    }
+    const r=await fetch(cfg.url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({number,message})});
+    return r.ok?{ok:true,note:'Sent'}:{ok:false,note:'Gateway error '+r.status};
+  }catch(e){return {ok:false,note:'Network error. Check your internet connection.'};}
+}
+
+/* Scanner */
+let scanner=null,busy=false;
+const today=()=>new Date().toISOString().slice(0,10);
+async function onScan(text){
+  if(busy)return;busy=true;
+  try{
+    let s;try{s=JSON.parse(text)}catch(e){throw new Error('This QR code is not a student code.')}
+    if(!s.n||!s.p)throw new Error('This QR code is missing student details.');
+    const mode=$('mode').value;
+    const log=store.get('log',[]);
+    if(log.some(l=>l.day===today()&&l.p===s.p&&l.n===s.n&&l.mode===mode&&l.ok)){
+      $('res').innerHTML=`<div class="msg">${esc(s.n)} was already texted today. Skipped.</div>`;return;}
+    $('res').innerHTML=`<div class="msg">Sending to ${esc(s.p)}...</div>`;
+    const msg=buildMsg(s,mode),r=await sendSMS(s.p,msg);
+    log.unshift({t:new Date().toLocaleString(),day:today(),n:s.n,p:s.p,mode,ok:r.ok,note:r.note});store.set('log',log.slice(0,500));
+    if(r.site){window.lastMsg=msg;try{navigator.clipboard.writeText(msg)}catch(e){}}
+    $('res').innerHTML=`<div class="msg"><b>${esc(s.n)}</b> (${esc(s.g)}) &middot; ${esc(s.p)}<br><span class="${r.ok?'ok':'bad'}">${esc(r.note)}</span><br><small>${esc(msg)}</small>${r.site?`<br><b>Number: ${esc(s.p)}</b><br><button class="act" onclick="copyMsg()">Copy message</button> <button class="act alt" onclick="openSite()">Open ${SITES[cfg.site||'e'][0]}</button>`:''}</div>`;
+  }catch(e){$('res').innerHTML=`<div class="msg bad">${esc(e.message)}</div>`;}
+  finally{setTimeout(()=>busy=false,3000);}
+}
+let running=false;
+async function startCam(){
+  if(running)return;
+  if(typeof Html5Qrcode==='undefined'){$('res').innerHTML='<div class="msg bad">Scanner library not loaded. Check your internet connection.</div>';return;}
+  if(!scanner)scanner=new Html5Qrcode('reader');
+  try{await scanner.start({facingMode:'environment'},{fps:10,qrbox:240},onScan);running=true;}
+  catch(e){$('res').innerHTML='<div class="msg bad">Camera blocked. Tap Allow when the browser asks, then press Start camera.</div>';}
+}
+async function stopCam(){if(!running)return;try{await scanner.stop()}catch(e){}running=false;}
+$('go').onclick=startCam;$('stop').onclick=stopCam;
+document.querySelectorAll('nav button').forEach(b=>b.addEventListener('click',()=>b.dataset.t==='scan'?startCam():stopCam()));
+window.addEventListener('load',startCam);
+
+/* Log */
+function drawLog(){$('rows').innerHTML=store.get('log',[]).map(l=>`<tr><td>${esc(l.t)}</td><td>${esc(l.n)}</td><td class="${l.ok?'ok':'bad'}">${esc(l.mode)}: ${esc(l.note)}</td></tr>`).join('')||'<tr><td colspan="3">No scans yet.</td></tr>';}
+$('clr').onclick=()=>{store.set('log',[]);drawLog();};
+</script>
+</body>
+</html>
